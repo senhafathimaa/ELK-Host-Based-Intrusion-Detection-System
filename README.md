@@ -371,7 +371,14 @@ sudo cp /etc/suricata/rules/local.rules /var/lib/suricata/rules/
 | Kibana couldn't connect to Elasticsearch over HTTPS | Copied `http_ca.crt` and set `ssl.certificateAuthorities` in kibana.yml |
 
 ---
+## Project structure
 
+ELK-Host-Based-Intrusion-Detection-System/
+├── README.md        ← Main documentation shown on GitHub
+├── ELK project.pdf  ← Downloadable report
+├── command.sh
+├── configs/
+└── screenshots/
 ## Conclusion
 
 This project successfully demonstrates how open-source tools can be integrated to build a working real-time intrusion detection and visualization system from scratch. Suricata monitored live host traffic, detected simulated attacks from a Windows VM, and the full ELK pipeline transported, stored, and visualized the resulting alerts.
