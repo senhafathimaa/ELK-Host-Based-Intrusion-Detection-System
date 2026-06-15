@@ -1,216 +1,391 @@
-# ELK-Host-Based-Intrusion-Detection-System
-**Host-Based Intrusion Detection System using the ELK Stack and Suricata** integrates Suricata, Filebeat, Logstash, Elasticsearch, and Kibana to monitor network traffic, process security logs, and visualize threats in real time. It detects suspicious activities such as ICMP, SSH brute-force, and Nmap scans through custom rules.
+# Host-Based Intrusion Detection System Using ELK Stack and Suricata
 
-
----
-
-## Features
-
-* Real-time network traffic monitoring
-* Custom Suricata detection rules
-* Automated log collection using Filebeat
-* Log processing and enrichment with Logstash
-* Secure storage and indexing using Elasticsearch
-* Interactive dashboards and visualizations in Kibana
-* Detection of common reconnaissance and attack techniques
-* End-to-end security event pipeline
+> A fully functional HIDS built on Kali Linux using Suricata for network detection and the ELK Stack for log processing and visualization.
 
 ---
 
-## Technology Stack
+## Table of Contents
 
-* **Operating System:** Kali Linux
-* **Intrusion Detection:** Suricata
-* **Log Shipper:** Filebeat
-* **Data Processing:** Logstash
-* **Search Engine:** Elasticsearch
-* **Visualization:** Kibana
-* **Testing Environment:** Windows Virtual Machine (VirtualBox)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Tools & Technologies](#tools--technologies)
+- [Data Flow](#data-flow)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Detection Rules](#detection-rules)
+- [Dashboard Setup](#dashboard-setup)
+- [Results](#results)
+- [Challenges & Solutions](#challenges--solutions)
+- [Conclusion](#conclusion)
+
+---
+
+## Overview
+
+This project implements a Host-Based Intrusion Detection System (HIDS) by integrating **Suricata** with the **ELK Stack** (Elasticsearch, Logstash, Kibana) on a Kali Linux host. The system captures live network traffic, processes it through a log pipeline, and visualizes real-time security alerts on a Kibana dashboard.
+
+A **Windows virtual machine** (running in VirtualBox on the same LAN) was used to simulate attacks — including ICMP pings, Nmap scans, and SSH brute-force attempts — directed at the Kali host.
 
 ---
 
 ## Architecture
+┌─────────────────────────────────────────────────────────────────┐
 
-```
-                Network Traffic
-                       │
-                       ▼
-                ┌─────────────┐
-                │  Suricata   │
-                │ IDS Engine  │
-                └──────┬──────┘
-                       │
-                 eve.json logs
-                       │
-                       ▼
-                ┌─────────────┐
-                │  Filebeat   │
-                └──────┬──────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │  Logstash   │
-                └──────┬──────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │Elasticsearch│
-                └──────┬──────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │   Kibana    │
-                │ Dashboards  │
-                └─────────────┘
-```
+│                    Kali Linux Host (192.168.0.105)              │
+
+│                                                                 │
+
+│  ┌───────────┐    ┌──────────┐    ┌──────────┐    ┌─────────┐  │
+
+│  │ Suricata  │───▶│ Filebeat │───▶│ Logstash │───▶│ Elastic │  │
+
+│  │ (IDS/NSM) │    │  (Ship)  │    │ (Process)│    │ search  │  │
+
+│  └───────────┘    └──────────┘    └──────────┘    └────┬────┘  │
+
+│       ▲                                                 │       │
+
+│       │                                            ┌────▼────┐  │
+
+│  wlan0 interface                                   │  Kibana │  │
+
+│                                                    │  :5061  │  │
+
+└─────────────────────────────────────────────────── └─────────┘  │
+
+▲
+
+│  Same LAN (192.168.0.0/24)
+
+┌────────┴──────────┐
+
+│  Windows VM       │
+
+│  (VirtualBox)     │
+
+│  192.168.0.107    │
+
+│  • Pings          │
+
+│  • Nmap scans     │
+
+│  • SSH attempts   │
+
+└───────────────────┘
+---
+
+## Tools & Technologies
+
+| Tool | Version | Role |
+|---|---|---|
+| Kali Linux | Bare metal | Host OS |
+| Suricata | 8.0.5 | Network IDS / NSM |
+| Elasticsearch | 9.x | Data store & search engine |
+| Logstash | 9.x | Log processing pipeline |
+| Kibana | 9.x | Visualization & dashboards |
+| Filebeat | 9.x | Log shipper |
+| VirtualBox | — | Windows VM host |
+| Windows VM | — | Attack traffic source |
 
 ---
 
-## Project Workflow
+## Data Flow
+Suricata (eve.json)
 
-1. Suricata monitors network traffic on the host interface.
-2. Security events are stored in `eve.json`.
-3. Filebeat continuously watches the log file.
-4. Filebeat forwards logs to Logstash.
-5. Logstash parses and enriches the events.
-6. Elasticsearch indexes the processed data.
-7. Kibana visualizes alerts through dashboards and charts.
+│
+
+▼
+
+Filebeat  ──────▶  Logstash (:5044)  ──────▶  Elasticsearch (:9200)
+
+│
+
+▼
+
+Kibana (:5061)
+1. Suricata monitors `wlan0` and writes structured JSON events to `/var/log/suricata/eve.json`
+2. Filebeat tails `eve.json` and ships logs to Logstash on port `5044`
+3. Logstash parses and enriches the events, then forwards them to Elasticsearch
+4. Elasticsearch indexes the data under the `suricata-YYYY.MM.dd` index pattern
+5. Kibana queries Elasticsearch and renders the data as interactive dashboards
 
 ---
 
 ## Installation
 
-### Install Elasticsearch
-
+### 1. Elasticsearch
 ```bash
-sudo dpkg -i elasticsearch-<version>.deb
+dpkg -i elasticsearch-*.deb
 sudo systemctl enable elasticsearch
 sudo systemctl start elasticsearch
 ```
 
-### Install Logstash
-
+### 2. Logstash
 ```bash
-sudo dpkg -i logstash-<version>.deb
+dpkg -i logstash-*.deb
 sudo systemctl enable logstash
 sudo systemctl start logstash
 ```
 
-### Install Kibana
-
+### 3. Kibana
 ```bash
-sudo dpkg -i kibana-<version>.deb
+dpkg -i kibana-*.deb
 sudo systemctl enable kibana
 sudo systemctl start kibana
 ```
 
-### Install Filebeat
-
+### 4. Filebeat
 ```bash
-sudo dpkg -i filebeat-<version>.deb
+dpkg -i filebeat-*.deb
 sudo systemctl enable filebeat
 sudo systemctl start filebeat
 ```
 
-### Install Suricata
-
+### 5. Suricata
 ```bash
-sudo apt install suricata
+sudo apt install suricata -y
 sudo systemctl enable suricata
 sudo systemctl start suricata
 ```
+
+> **Note:** Always restart a service after editing its configuration file.
+> ```bash
+> sudo systemctl restart <service-name>
+> ```
 
 ---
 
 ## Configuration
 
-* Configure Elasticsearch network settings.
-* Configure Kibana connection and SSL certificates.
-* Create a Logstash pipeline.
-* Configure Suricata monitoring interface.
-* Add custom detection rules.
-* Configure Filebeat to monitor `eve.json`.
-* Connect Filebeat to Logstash.
-* Create Kibana data views and dashboards.
+### Elasticsearch (`/etc/elasticsearch/elasticsearch.yml`)
+
+```yaml
+network.host: "0.0.0.0"
+http.port: 9200
+transport.host: "0.0.0.0"
+```
+
+Reset the elastic user password:
+```bash
+sudo /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
+```
+
+Fix permission errors if they occur:
+```bash
+sudo chown -R elasticsearch:elasticsearch /etc/elasticsearch
+sudo chmod -R 750 /etc/elasticsearch
+```
+
+Verify Elasticsearch is running:
+```bash
+curl -k -u elastic:<password> https://localhost:9200
+```
+
+---
+
+### Kibana (`/etc/kibana/kibana.yml`)
+
+```yaml
+server.port: 5061
+server.host: "0.0.0.0"
+elasticsearch.hosts: ["https://localhost:9200"]
+elasticsearch.password: "<your-elastic-password>"
+elasticsearch.ssl.certificateAuthorities: ["/etc/kibana/ca.crt"]
+elasticsearch.ssl.verificationMode: full
+```
+
+Copy the Elasticsearch CA certificate:
+```bash
+sudo cp /etc/elasticsearch/certs/http_ca.crt /etc/kibana/ca.crt
+```
+
+Generate encryption keys and add to `kibana.yml`:
+```bash
+sudo /usr/share/kibana/bin/kibana-encryption-keys generate
+```
+
+Generate a service account token (alternative to password):
+```bash
+sudo /usr/share/elasticsearch/bin/elasticsearch-service-tokens create elastic/kibana kibana-token
+```
+
+---
+
+### Logstash (`/etc/logstash/conf.d/pipeline.conf`)
+
+```ruby
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [message] =~ /^\{.*\}$/ {
+    json {
+      source => "message"
+      target => "suricata"
+    }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["https://localhost:9200"]
+    user => "elastic"
+    password => "<your-elastic-password>"
+    index => "suricata-%{+YYYY.MM.dd}"
+    ssl_enabled => true
+    ssl_certificate_authorities => ["/etc/logstash/certs/http_ca.crt"]
+    ilm_enabled => false
+  }
+}
+```
+
+Copy CA cert and fix permissions:
+```bash
+sudo mkdir -p /etc/logstash/certs
+sudo cp /etc/elasticsearch/certs/http_ca.crt /etc/logstash/certs/
+sudo chown logstash:logstash /etc/logstash/certs/http_ca.crt
+sudo chmod 644 /etc/logstash/certs/http_ca.crt
+sudo chown -R logstash:logstash /var/lib/logstash /var/log/logstash
+```
+
+Verify Logstash is listening:
+```bash
+sudo ss -tulnp | grep 5044
+```
+
+---
+
+### Suricata (`/etc/suricata/suricata.yaml`)
+
+```yaml
+af-packet:
+  - interface: wlan0
+
+- eve-log:
+    enabled: yes
+    filetype: regular
+    filename: /var/log/suricata/eve.json
+
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - local.rules
+```
+
+Validate configuration:
+```bash
+sudo suricata -T -c /etc/suricata/suricata.yaml -v
+```
+
+---
+
+### Filebeat (`/etc/filebeat/filebeat.yml`)
+
+```yaml
+filebeat.inputs:
+  - type: filestream
+    id: my-filestream-id
+    enabled: true
+    paths:
+      - /var/log/suricata/eve.json
+      - /var/log/auth.log
+
+output.logstash:
+  hosts: ["localhost:5044"]
+```
+
+Fix permissions and test:
+```bash
+sudo chmod 644 /var/log/suricata/eve.json
+sudo chmod 644 /var/log/auth.log
+sudo filebeat test output
+```
 
 ---
 
 ## Detection Rules
 
-The project includes custom rules for:
+File: `/etc/suricata/rules/local.rules`
+alert icmp any any -> any any (msg:"ICMP Ping Detected"; itype:8; sid:1000001; rev:1;)
 
-* ICMP Ping Detection
-* SSH Brute Force Attempts
-* Nmap SYN Scan
-* Nmap FIN Scan
-* Nmap Xmas Scan
+alert tcp any any -> any 22 (msg:"SSH Brute-Force Attempt"; flow:to_server,established; content:"SSH-"; threshold:type threshold, track by_src, count:5, seconds:60; sid:1000002; rev:1;)
 
-Each rule uses a unique SID and generates alerts whenever matching traffic is detected.
+alert tcp any any -> any any (msg:"Nmap SYN Scan Detected"; flags:S; threshold:type threshold, track by_src, count:20, seconds:10; sid:1000003; rev:1;)
 
----
+alert tcp any any -> any any (msg:"Nmap NULL Scan Detected"; flags:0; sid:1000004; rev:1;)
 
-## Testing
+alert tcp any any -> any any (msg:"Nmap Xmas Scan Detected"; flags:FPU; sid:1000005; rev:1;)
+> **Important:** Every rule must have a unique `sid`.
 
-A Windows virtual machine was used to generate attack traffic including:
-
-* Continuous ICMP ping requests
-* SSH connection attempts
-* Nmap reconnaissance scans
-
-Suricata successfully detected these activities and generated alerts that were processed through the ELK pipeline and displayed in Kibana.
+Copy rules to Suricata's rule path:
+```bash
+sudo cp /etc/suricata/rules/local.rules /var/lib/suricata/rules/
+```
 
 ---
 
-## Dashboard
+## Dashboard Setup
 
-Kibana dashboards provide:
+1. Go to **Stack Management → Data Views → Create data view**
+   - Index pattern: `suricata-*`
+   - Timestamp field: `@timestamp`
 
-* Alert count over time
-* Event filtering
-* Security event exploration
-* Visualization of intrusion attempts
-* Timeline analysis
+2. Go to **Analytics → Discover**, select `suricata-*` — over 1,600 documents should appear
+
+3. Filter for alerts: `suricata.event_type: alert`
+
+4. Go to **Analytics → Visualize Library → Create visualization → Lens**
+
+| Setting | Value |
+|---|---|
+| Data view | `suricata-*` |
+| Filter | `suricata.event_type: alert` |
+| Chart type | Bar |
+| Horizontal axis | `@timestamp` |
+| Vertical axis | Count of records |
+
+5. Save as **"Alert Types Breakdown"** and add to dashboard
 
 ---
 
 ## Results
 
-The integrated pipeline successfully:
-
-* Captured live network traffic
-* Processed thousands of log entries
-* Indexed events in Elasticsearch
-* Displayed alerts in Kibana dashboards
-* Detected custom attack signatures in real time
-
-The implementation demonstrates an effective open-source security monitoring solution suitable for learning and small-scale deployments.
+- **82 alert events** confirmed in Kibana Discover during testing
+- All **5 custom Suricata rules** loaded and triggered successfully
+- Dashboard showed clear **spikes in alert activity** during test periods
+- Highest spike: **20+ alerts** on June 8th during active ICMP ping testing
 
 ---
 
-## Future Improvements
+## Challenges & Solutions
 
-* Integrate Elastic Security SIEM
-* Add Email or Slack notifications
-* Deploy Suricata in IPS mode
-* Add threat intelligence feeds
-* Implement machine learning-based anomaly detection
-* Monitor multiple hosts simultaneously
+| Challenge | Solution |
+|---|---|
+| Kibana rejected the elastic superuser account | Used a service account token via `elasticsearch-service-tokens` |
+| Elasticsearch file permission errors | Ran `sudo chown -R elasticsearch:elasticsearch /etc/elasticsearch` |
+| Logstash permission issues | Fixed ownership on `/var/lib/logstash` and always ran via systemd |
+| Suricata rule path mismatch | Copied rules from `/etc/suricata/rules/` to `/var/lib/suricata/rules/` |
+| Filebeat failed to start | Replaced deprecated `log` input type with `filestream` (Filebeat 9) |
+| Kibana couldn't connect to Elasticsearch over HTTPS | Copied `http_ca.crt` and set `ssl.certificateAuthorities` in kibana.yml |
 
 ---
 
 ## Conclusion
 
-This project demonstrates the successful implementation of a Host-Based Intrusion Detection System using Suricata and the ELK Stack. By combining packet inspection, centralized log management, and interactive visualization, the system provides real-time visibility into network activity and helps identify potential security threats. It highlights the practical integration of open-source cybersecurity tools to build an effective monitoring and incident analysis platform.
+This project successfully demonstrates how open-source tools can be integrated to build a working real-time intrusion detection and visualization system from scratch. Suricata monitored live host traffic, detected simulated attacks from a Windows VM, and the full ELK pipeline transported, stored, and visualized the resulting alerts.
+
+While Suricata is primarily a Network IDS/IPS, deploying it on a host's own interface makes it effective for host-level monitoring. In a production environment, deploying it on a network gateway or SPAN port would scale this to an entire network.
 
 ---
-Disclaimer:
-
-This project was conducted strictly in a legal and controlled lab environment for educational purposes only.
-t
 
 ## Author
 
 **Senha Fathima**
-cybersecurity student
 
-Cybersecurity Project – Host-Based Intrusion Detection System Using the ELK Stack and Suricata
+---
+
+## License
+
+This project is for educational and research purposes.
