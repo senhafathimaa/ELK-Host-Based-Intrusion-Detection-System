@@ -203,9 +203,14 @@ The implementation demonstrates an effective open-source security monitoring sol
 This project demonstrates the successful implementation of a Host-Based Intrusion Detection System using Suricata and the ELK Stack. By combining packet inspection, centralized log management, and interactive visualization, the system provides real-time visibility into network activity and helps identify potential security threats. It highlights the practical integration of open-source cybersecurity tools to build an effective monitoring and incident analysis platform.
 
 ---
+Disclaimer:
+
+This project was conducted strictly in a legal and controlled lab environment for educational purposes only.
+t
 
 ## Author
 
 **Senha Fathima**
+cybersecurity student
 
 Cybersecurity Project – Host-Based Intrusion Detection System Using the ELK Stack and Suricata
