@@ -24,7 +24,7 @@
 
 This project implements a Host-Based Intrusion Detection System (HIDS) by integrating **Suricata** with the **ELK Stack** (Elasticsearch, Logstash, Kibana) on a Kali Linux host. The system captures live network traffic, processes it through a log pipeline, and visualizes real-time security alerts on a Kibana dashboard.
 
-A **Windows virtual machine** (running in VirtualBox on the same LAN) was used to simulate attacks — including ICMP pings, Nmap scans, and SSH brute-force attempts — directed at the Kali host.
+A **Windows virtual machine** (running in VirtualBox on the same LAN) was used to simulate attacks including ICMP pings, Nmap scans, and SSH brute-force attempts directed at the Kali host.
 
 ---
 
