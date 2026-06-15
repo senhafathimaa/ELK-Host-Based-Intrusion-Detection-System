@@ -371,12 +371,6 @@ sudo cp /etc/suricata/rules/local.rules /var/lib/suricata/rules/
 | Kibana couldn't connect to Elasticsearch over HTTPS | Copied `http_ca.crt` and set `ssl.certificateAuthorities` in kibana.yml |
 
 ---
-##Project Structure
-/
-
-│── README.md
-│── project.pdf
-│── commands.sh
 
 ## Conclusion
 
